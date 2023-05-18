@@ -43,6 +43,6 @@ def pg_tester(data):
 
 if __name__ == '__main__':
     ds = data_generator()
-    #PG_benchmark(ds)
+    PG_benchmark(ds)
 
     ELK_benchmark(ds)

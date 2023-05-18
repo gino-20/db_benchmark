@@ -54,6 +54,7 @@ class Benchmark(ABC):
 class PG_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
+        print('Testing Postgres')
         self.PAGE_SIZE = 5000
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
             create_table = "create table IF NOT EXISTS test (id uuid, name varchar(256), email varchar(256));"
@@ -104,11 +105,13 @@ class PG_benchmark(Benchmark):
 class ELK_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
+        print('Testing ELK')
         es = elasticsearch.Elasticsearch(elk_url)
         if not es.indices.exists('test'):
             es.indices.create('test', elk_index)
- #       self.write_many()
         self.write_one()
+        self.write_many()
+        self.read_one()
         self.clean()
 
     def _timer(func):
@@ -132,6 +135,7 @@ class ELK_benchmark(Benchmark):
                 'email': data.email
             }
 
+    @_timer
     def write_many(self):
         es = elasticsearch.Elasticsearch(elk_url)
         bulk(es, self.elk_iterator(self.data), ignore=[400, 404])
@@ -147,8 +151,10 @@ class ELK_benchmark(Benchmark):
             }
         es.index(index='test', id=data.id, body=document)
 
+    @_timer
     def read_one(self):
-        pass
+        es = elasticsearch.Elasticsearch(elk_url)
+        es.get(index='test', id=self.item.id)
 
     def clean(self):
         es = elasticsearch.Elasticsearch(elk_url)
