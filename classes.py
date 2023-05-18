@@ -6,13 +6,33 @@ from faker import Faker
 import psycopg2
 from psycopg2.extras import execute_batch
 from random import choice
+from functools import wraps
+import time
+import elasticsearch
+from elasticsearch.helpers import bulk
 
-from config import pg_config
+from config import pg_config, elk_url, elk_index
+
+
+
+
 
 class Benchmark(ABC):
     @abstractmethod
     def __init__(self, data):
         self.data = data
+        self.item = choice(self.data)
+        self.data.remove(self.item)
+
+    @abstractmethod
+    def _timer(func):
+        def timer_wrapper(self):
+            start_time = time.perf_counter()
+            func(self)
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+        return timer_wrapper
 
     @abstractmethod
     def write_one(self):
@@ -32,26 +52,35 @@ class Benchmark(ABC):
 
 
 class PG_benchmark(Benchmark):
-    def __init__(self):
-        super().__init__()
-        self.PAGE_SIZE=5000
+    def __init__(self, data):
+        super().__init__(data)
+        self.PAGE_SIZE = 5000
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
             create_table = "create table IF NOT EXISTS test (id uuid, name varchar(256), email varchar(256));"
             cur.execute(create_table)
             conn.commit()
-        self.item = choice(self.data)
-        self.data.remove(self.item)
         self.write_one()
         self.write_many()
         self.read_one()
         self.clean()
 
+    def _timer(func):
+        def timer_wrapper(self):
+            start_time = time.perf_counter()
+            func(self)
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+        return timer_wrapper
+
+    @_timer
     def write_one(self):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
             query = 'INSERT INTO test (id, name, email) VALUES (%s, %s, %s)'
-            cur.execute(query, (self.item.id, self.item.name, self.item.email))
+            cur.execute(query, (str(self.item.id), self.item.name, self.item.email))
             conn.commit()
 
+    @_timer
     def write_many(self):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
             data_set = [(str(item.id), item.name, item.email) for item in self.data]
@@ -59,6 +88,7 @@ class PG_benchmark(Benchmark):
             execute_batch(cur, query, data_set, page_size=self.PAGE_SIZE)
             conn.commit()
 
+    @_timer
     def read_one(self):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
             query = f"select * from test where id = '{self.item.id}'"
@@ -69,3 +99,57 @@ class PG_benchmark(Benchmark):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
             query = 'drop table test;'
             cur.execute(query)
+
+
+class ELK_benchmark(Benchmark):
+    def __init__(self, data):
+        super().__init__(data)
+        es = elasticsearch.Elasticsearch(elk_url)
+        if not es.indices.exists('test'):
+            es.indices.create('test', elk_index)
+ #       self.write_many()
+        self.write_one()
+        self.clean()
+
+    def _timer(func):
+        def timer_wrapper(self):
+            start_time = time.perf_counter()
+            func(self)
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+
+        return timer_wrapper
+
+    def elk_iterator(self, data_set):
+        """Prepare ELK data chunks to write to the Elastic DB"""
+        for data in data_set:
+            yield {
+                '_index': 'test',
+                '_id': data.id,
+                'id': data.id,
+                'name': data.name,
+                'email': data.email
+            }
+
+    def write_many(self):
+        es = elasticsearch.Elasticsearch(elk_url)
+        bulk(es, self.elk_iterator(self.data), ignore=[400, 404])
+
+    @_timer
+    def write_one(self):
+        es = elasticsearch.Elasticsearch(elk_url)
+        data = self.item
+        document = {
+                'id': data.id,
+                'name': data.name,
+                'email': data.email
+            }
+        es.index(index='test', id=data.id, body=document)
+
+    def read_one(self):
+        pass
+
+    def clean(self):
+        es = elasticsearch.Elasticsearch(elk_url)
+        es.indices.delete(index='test', ignore=[400, 404])

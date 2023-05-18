@@ -5,6 +5,8 @@ from faker import Faker
 import psycopg2
 from psycopg2.extras import execute_batch
 
+from classes import PG_benchmark, ELK_benchmark
+
 dsn = {
     'dbname': 'test',
     'user': 'test',
@@ -37,3 +39,10 @@ def pg_tester(data):
         query = 'INSERT INTO test (id, name, email) VALUES (%s, %s, %s)'
         execute_batch(cur, query, data_set, page_size=PAGE_SIZE)
         conn.commit()
+
+
+if __name__ == '__main__':
+    ds = data_generator()
+    #PG_benchmark(ds)
+
+    ELK_benchmark(ds)
