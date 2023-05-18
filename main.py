@@ -5,7 +5,7 @@ from faker import Faker
 import psycopg2
 from psycopg2.extras import execute_batch
 
-from classes import PG_benchmark, ELK_benchmark
+from classes import PG_benchmark, ELK_benchmark, Mongo_benchmark
 
 dsn = {
     'dbname': 'test',
@@ -43,6 +43,8 @@ def pg_tester(data):
 
 if __name__ == '__main__':
     ds = data_generator()
-    PG_benchmark(ds)
+    #PG_benchmark(ds)
 
-    ELK_benchmark(ds)
+    #LK_benchmark(ds)
+
+    Mongo_benchmark(ds)

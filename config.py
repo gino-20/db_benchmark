@@ -68,3 +68,5 @@ elk_index = {
         }
     }
 }
+
+mongo_url = os.environ.get('MONGO_URL')

@@ -10,8 +10,10 @@ from functools import wraps
 import time
 import elasticsearch
 from elasticsearch.helpers import bulk
+import pymongo
+from bson.binary import UuidRepresentation
 
-from config import pg_config, elk_url, elk_index
+from config import pg_config, elk_url, elk_index, mongo_url
 
 
 
@@ -159,3 +161,48 @@ class ELK_benchmark(Benchmark):
     def clean(self):
         es = elasticsearch.Elasticsearch(elk_url)
         es.indices.delete(index='test', ignore=[400, 404])
+
+class Mongo_benchmark(Benchmark):
+    def __init__(self, data):
+        super().__init__(data)
+        self.write_one()
+        self.data = [dict(item) for item in data]
+        self.write_many()
+        self.read_one()
+        self.clean()
+
+    def _timer(func):
+        def timer_wrapper(self):
+            start_time = time.perf_counter()
+            func(self)
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+
+        return timer_wrapper
+
+    @_timer
+    def write_one(self):
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng_db = mng["test"]
+        mng_col = mng_db["test"]
+        mng_col.insert_one(dict(self.item))
+    @_timer
+    def write_many(self):
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng_db = mng["test"]
+        mng_col = mng_db["test"]
+        mng_col.insert_many(self.data)
+
+    @_timer
+    def read_one(self):
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng_db = mng["test"]
+        mng_col = mng_db["test"]
+        mng_col.find({'id': self.item.id})
+
+    def clean(self):
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng_db = mng["test"]
+        mng_col = mng_db["test"]
+        mng_col.drop()
