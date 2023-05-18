@@ -5,6 +5,7 @@ from faker import Faker
 import psycopg2
 from psycopg2.extras import execute_batch
 
+from config import data_range
 from classes import PG_benchmark, ELK_benchmark, Mongo_benchmark
 
 dsn = {
@@ -25,7 +26,7 @@ class Test(BaseModel):
 
 def data_generator() -> list:
     fake = Faker()
-    data_list = [Test(id=uuid.uuid4(), name=fake.name(), email=fake.email()) for _ in range(1000)]
+    data_list = [Test(id=uuid.uuid4(), name=fake.name(), email=fake.email()) for _ in range(data_range)]
     return data_list
 
 
@@ -42,9 +43,10 @@ def pg_tester(data):
 
 
 if __name__ == '__main__':
+    print(f'Benchmarking DBs with the dataset of {data_range} items\n')
     ds = data_generator()
-    #PG_benchmark(ds)
+    PG_benchmark(ds)
 
-    #LK_benchmark(ds)
+    ELK_benchmark(ds)
 
     Mongo_benchmark(ds)

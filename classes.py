@@ -1,17 +1,12 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
 import contextlib
-import uuid
-from faker import Faker
 import psycopg2
 from psycopg2.extras import execute_batch
 from random import choice
-from functools import wraps
 import time
 import elasticsearch
 from elasticsearch.helpers import bulk
 import pymongo
-from bson.binary import UuidRepresentation
 
 from config import pg_config, elk_url, elk_index, mongo_url
 
@@ -165,6 +160,7 @@ class ELK_benchmark(Benchmark):
 class Mongo_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
+        print('Testing Mongo')
         self.write_one()
         self.data = [dict(item) for item in data]
         self.write_many()
