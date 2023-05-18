@@ -7,11 +7,10 @@ import time
 import elasticsearch
 from elasticsearch.helpers import bulk
 import pymongo
+import numpy
+import clickhouse_connect
 
-from config import pg_config, elk_url, elk_index, mongo_url
-
-
-
+from config import pg_config, elk_url, elk_index, mongo_url, clickhouse_dsl
 
 
 class Benchmark(ABC):
@@ -202,3 +201,46 @@ class Mongo_benchmark(Benchmark):
         mng_db = mng["test"]
         mng_col = mng_db["test"]
         mng_col.drop()
+
+
+class Clickhouse_benchmark(Benchmark):
+    def __init__(self, data):
+        super().__init__(data)
+        print('Testing Clickhouse')
+        self.write_one()
+        self.write_many()
+        self.read_one()
+        self.clean()
+
+    def _timer(func):
+        def timer_wrapper(self):
+            start_time = time.perf_counter()
+            func(self)
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+
+        return timer_wrapper
+
+    @_timer
+    def write_one(self):
+        cl = clickhouse_connect.get_client(**clickhouse_dsl)
+        data = [list(dict(self.item).values())]
+        cl.command('CREATE TABLE IF NOT EXISTS test (id UUID, name String, email String) ENGINE MergeTree ORDER BY id')
+        cl.insert('test', data, column_names=['id', 'name', 'email'])
+
+    @_timer
+    def write_many(self):
+        cl = clickhouse_connect.get_client(**clickhouse_dsl)
+        cl.command('CREATE TABLE IF NOT EXISTS test (id UUID, name String, email String) ENGINE MergeTree ORDER BY id')
+        data_list = [[item.id, item.name, item.email] for item in self.data]
+        cl.insert('test', data_list, column_names=['id', 'name', 'email'])
+
+    @_timer
+    def read_one(self):
+        cl = clickhouse_connect.get_client(**clickhouse_dsl)
+        cl.query(f'SELECT COLUMNS("id") FROM test')
+
+    def clean(self):
+        cl = clickhouse_connect.get_client(**clickhouse_dsl)
+        cl.command('DROP TABLE test')

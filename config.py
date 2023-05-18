@@ -3,7 +3,7 @@ import os
 
 load_dotenv()
 
-data_range = 100000
+data_range = 1000
 
 pg_config = {
     'dbname': os.environ.get("PG_DBNAME"),
@@ -72,3 +72,9 @@ elk_index = {
 }
 
 mongo_url = os.environ.get('MONGO_URL')
+
+clickhouse_dsl = {
+    'host': os.environ.get('CLICKHOUSE_URL'),
+    'username': os.environ.get('CLICKHOUSE_USER'),
+    'password': os.environ.get('CLICKHOUSE_PASS')
+}
