@@ -3,7 +3,7 @@ import os
 
 load_dotenv()
 
-data_range = 1000
+data_range = 100000
 
 pg_config = {
     'dbname': os.environ.get("PG_DBNAME"),
