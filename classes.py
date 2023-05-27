@@ -240,21 +240,20 @@ class Clickhouse_benchmark(Benchmark):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
         data = [list(dict(self.item).values())]
         cl.command('CREATE TABLE IF NOT EXISTS test '
-                   '(user_id UUID, likes Array(String), dislikes Array(String), bookmarks Array(String), score Float32) '
+                   '(user_id UUID, likes Array(UUID), dislikes Array(UUID), bookmarks Array(UUID), score Float32) '
                    'ENGINE MergeTree ORDER BY user_id')
         cl.insert('test', data, column_names=['user_id', 'likes', 'dislikes', 'bookmarks', 'score'])
 
     @_timer
     def write_many(self):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
-        cl.command('CREATE TABLE IF NOT EXISTS test (id UUID, name String, email String) ENGINE MergeTree ORDER BY id')
-        data_list = [[item.id, item.name, item.email] for item in self.data]
-        cl.insert('test', data_list, column_names=['id', 'name', 'email'])
+        data_list = [[item.user_id, item.likes, item.dislikes, item.bookmarks, item.score] for item in self.data]
+        cl.insert('test', data_list, column_names=['user_id', 'likes', 'dislikes', 'bookmarks', 'score'])
 
     @_timer
     def read_one(self):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
-        cl.query(f'SELECT COLUMNS("id") FROM test')
+        cl.query(f'SELECT COLUMNS("user_id") FROM test')
 
     def clean(self):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)

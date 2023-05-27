@@ -32,3 +32,4 @@ services:
       CLICKHOUSE_ADMIN_PASSWORD: 'password'
     ports:
       - "${CLICKHOUSE_DBPORT}:8123"
+      - "9000:9000"
