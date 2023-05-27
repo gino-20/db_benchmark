@@ -1,8 +1,10 @@
+"""Main function to run DB benchmark tests."""
 import uuid
 from random import randint, random
 from typing import List
 
 from pydantic import BaseModel
+
 from tqdm import tqdm
 
 from classes import (Clickhouse_benchmark, ELK_benchmark, Mongo_benchmark,
@@ -29,6 +31,7 @@ class Test(BaseModel):
 
 
 def data_generator() -> list:
+    """Generate random dataset."""
     # The data structure is made with the idea,
     # that everything is based on the id of user
     data_list = [

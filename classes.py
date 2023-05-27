@@ -190,7 +190,7 @@ class ELK_benchmark(Benchmark):
         return timer_wrapper
 
     def elk_iterator(self, data_set):
-        """Prepare ELK data chunks to write to the Elastic DB"""
+        """Prepare ELK data chunks to write to the Elastic DB."""
         for data in data_set:
             yield {
                 "_index": "test",

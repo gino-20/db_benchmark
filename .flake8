@@ -1,0 +1,110 @@
+[flake8]
+## pip install flake8
+## запуск: flake8 <my_project>
+## Версии: flake8-6.0.0 mccabe-0.7.0 pycodestyle-2.10.0 pyflakes-3.0.1
+
+## директории для проверки flake8
+
+#application-import-names = ...
+
+max-line-length = 160
+## исключения из проверки flake8,
+## Также можно добавить в исключения отдельную строку в вашем модуле,
+## просто оставив на этой строке комментарий - # noqa
+
+exclude = .git,__pycache__
+
+## исключения для игнорируемых правил оформления
+ignore =
+    # F812: list comprehension redefines ...
+    F812,
+    D102,
+    E121,
+    E126,
+    E131,
+    E122,
+    Q000,
+    # H101: Use name_todo(name)
+    H101,
+    # H202: assertRaises Exception too broad
+    H202,
+    # H233: Python 3.x incompatible use of print operator
+    H233,
+    # H301: one import per line
+    H301,
+    # H306: imports not in alphabetical order (time, os)
+    H306,
+    # H401: docstring should not start with a space
+    H401,
+    # H403: multi line docstrings should end on a new line
+    H403,
+    # H404: multi line docstring should start without a leading new line
+    H404,
+    # H405: multi line docstring summary not separated with an empty line
+    H405,
+    # H501: Do not use self.__dict__ for string formatting
+    H501,
+    # Игнорировать builtins предупреждение “<some_builtin> is a python builtin and is being shadowed, consider renaming the variable”
+    B001,
+    #  Игнорируется "Missing docstring in public module"
+    D100,
+    # Игнорировать docstrings предупреждение “Missing docstring in public class”
+    D101
+    # Missing docstring in public package
+    D104
+    # Missing docstring in magic method
+    D105
+    # Missing docstring in __init__
+    D107
+    #  Imported names are in the wrong order
+    I100
+    I101
+    #  Additional newline in a group of imports
+    I202
+    #  line break before binary operator
+    W503
+    # Missing parameter(s) in Docstring
+    DAR101
+    # DAR201 Missing "Returns" in Docstring
+    DAR201
+    # DAR301 Missing "Yields" in Docstring
+    DAR301
+    # DAR401 Missing exception(s) in Raises section
+    DAR401
+    # E402 module level import not at top of file
+    E402
+
+
+
+
+
+
+## проверка порядка импортов
+## pip install flake8-import-order
+## Версии: flake8-import-order-0.18.2
+
+# стиль Google Style Guide
+import-order-style = google
+
+## проверка докстринг в соответствии с конвенциями PYTHON
+## pip install flake8_docstrings
+## Версии: flake8_docstrings-1.7.0 pydocstyle-6.3.0 snowballstemmer-2.2.0
+
+#ignore =
+#    D101 # Игнорировать docstrings предупреждение “Missing docstring in public class”
+
+
+## проверка встроенных имен в качестве переменных
+## pip install flake8-builtins
+## Версии:  flake8-builtins-2.1.0
+
+# ignore =
+ # Игнорировать builtins предупреждение “<some_builtin> is a python builtin and is being shadowed, consider renaming the variable”
+ #   B001
+
+## проверяет тип ковычек
+## pip install flake8-quotes
+## Версии: flake8-quotes-3.3.2
+
+# Указываем, какой тип кавычек должен использоваться в вашем проекте
+inline-quotes = "
