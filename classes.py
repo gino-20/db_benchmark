@@ -1,25 +1,18 @@
-from abc import ABC, abstractmethod
 import contextlib
-import psycopg2
-from psycopg2.extras import execute_batch
-from random import choice, sample
 import time
-import elasticsearch
-from elasticsearch.helpers import bulk
-import pymongo
-import numpy
-import clickhouse_connect
+from abc import ABC, abstractmethod
 from multiprocessing import Pool
+from random import choice, sample
 
-from config import (
-    pg_config,
-    elk_url,
-    elk_index,
-    mongo_url,
-    clickhouse_dsl,
-    number_of_reads,
-    number_of_threads,
-)
+import clickhouse_connect
+import elasticsearch
+import psycopg2
+import pymongo
+from elasticsearch.helpers import bulk
+from psycopg2.extras import execute_batch
+
+from config import (clickhouse_dsl, elk_index, elk_url, mongo_url,
+                    number_of_reads, number_of_threads, pg_config)
 
 
 class Benchmark(ABC):

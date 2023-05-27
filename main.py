@@ -1,13 +1,13 @@
-from pydantic import BaseModel
-from typing import List
 import uuid
-from tqdm import tqdm
 from random import randint, random
+from typing import List
 
-from classes import PG_benchmark, ELK_benchmark, Mongo_benchmark,\
-    Clickhouse_benchmark
+from pydantic import BaseModel
+from tqdm import tqdm
 
-from config import numer_of_subfields, number_of_reads, number_of_threads
+from classes import (Clickhouse_benchmark, ELK_benchmark, Mongo_benchmark,
+                     PG_benchmark)
+from config import number_of_reads, number_of_threads, numer_of_subfields
 
 dsn = {
     "dbname": "test",
