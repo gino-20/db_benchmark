@@ -52,8 +52,14 @@ class PG_benchmark(Benchmark):
         super().__init__(data)
         print('Testing Postgres')
         self.PAGE_SIZE = 5000
+        psycopg2.extras.register_uuid()
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            create_table = "create table IF NOT EXISTS test (id uuid, name varchar(256), email varchar(256));"
+            create_table = "create table IF NOT EXISTS test (" \
+                           "user_id uuid, " \
+                           "likes uuid[]," \
+                           "dislikes uuid[]," \
+                           "bookmarks uuid[]," \
+                           "score float(1));"
             cur.execute(create_table)
             conn.commit()
         self.write_one()
@@ -73,22 +79,26 @@ class PG_benchmark(Benchmark):
     @_timer
     def write_one(self):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            query = 'INSERT INTO test (id, name, email) VALUES (%s, %s, %s)'
-            cur.execute(query, (str(self.item.id), self.item.name, self.item.email))
+            query = 'INSERT INTO test (user_id, likes, dislikes, bookmarks, score) VALUES (%s, %s, %s, %s, %s)'
+            cur.execute(query, (self.item.user_id,
+                                self.item.likes,
+                                self.item.dislikes,
+                                self.item.bookmarks,
+                                self.item.score))
             conn.commit()
 
     @_timer
     def write_many(self):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            data_set = [(str(item.id), item.name, item.email) for item in self.data]
-            query = 'INSERT INTO test (id, name, email) VALUES (%s, %s, %s)'
+            data_set = [(item.user_id, item.likes, item.dislikes, item.bookmarks, item.score) for item in self.data]
+            query = 'INSERT INTO test (user_id, likes, dislikes, bookmarks, score) VALUES (%s, %s, %s, %s, %s)'
             execute_batch(cur, query, data_set, page_size=self.PAGE_SIZE)
             conn.commit()
 
     @_timer
     def read_one(self):
         with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            query = f"select * from test where id = '{self.item.id}'"
+            query = f"select * from test where user_id = '{self.item.user_id}'"
             cur.execute(query)
             cur.fetchone()
 
@@ -125,10 +135,11 @@ class ELK_benchmark(Benchmark):
         for data in data_set:
             yield {
                 '_index': 'test',
-                '_id': data.id,
-                'id': data.id,
-                'name': data.name,
-                'email': data.email
+                '_id': data.user_id,
+                'user_id': data.user_id,
+                'likes': data.likes,
+                'dislikes': data.dislikes,
+                'score': data.score
             }
 
     @_timer
@@ -141,16 +152,18 @@ class ELK_benchmark(Benchmark):
         es = elasticsearch.Elasticsearch(elk_url)
         data = self.item
         document = {
-                'id': data.id,
-                'name': data.name,
-                'email': data.email
+                'user_id': data.user_id,
+                'likes': data.likes,
+                'dislikes': data.dislikes,
+                'bookmarks': data.bookmarks,
+                'score': data.score
             }
-        es.index(index='test', id=data.id, body=document)
+        es.index(index='test', id=data.user_id, body=document)
 
     @_timer
     def read_one(self):
         es = elasticsearch.Elasticsearch(elk_url)
-        es.get(index='test', id=self.item.id)
+        es.get(index='test', id=self.item.user_id)
 
     def clean(self):
         es = elasticsearch.Elasticsearch(elk_url)
@@ -194,7 +207,7 @@ class Mongo_benchmark(Benchmark):
         mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
         mng_db = mng["test"]
         mng_col = mng_db["test"]
-        mng_col.find({'id': self.item.id})
+        mng_col.find({'id': self.item.user_id})
 
     def clean(self):
         mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
@@ -226,8 +239,10 @@ class Clickhouse_benchmark(Benchmark):
     def write_one(self):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
         data = [list(dict(self.item).values())]
-        cl.command('CREATE TABLE IF NOT EXISTS test (id UUID, name String, email String) ENGINE MergeTree ORDER BY id')
-        cl.insert('test', data, column_names=['id', 'name', 'email'])
+        cl.command('CREATE TABLE IF NOT EXISTS test '
+                   '(user_id UUID, likes Array(String), dislikes Array(String), bookmarks Array(String), score Float32) '
+                   'ENGINE MergeTree ORDER BY user_id')
+        cl.insert('test', data, column_names=['user_id', 'likes', 'dislikes', 'bookmarks', 'score'])
 
     @_timer
     def write_many(self):

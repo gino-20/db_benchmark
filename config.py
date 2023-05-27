@@ -3,7 +3,7 @@ import os
 
 load_dotenv()
 
-data_range = 100000
+data_range = 100
 
 pg_config = {
     'dbname': os.environ.get("PG_DBNAME"),
@@ -58,14 +58,38 @@ elk_index = {
     "mappings": {
         "dynamic": "strict",
         "properties": {
-            "id": {
+            "user_id": {
                 "type": "keyword"
             },
-            "name": {
-                "type": "text"
+            "likes": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
             },
-            "email": {
-                "type": "text"
+            "dislikes": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "bookmarks": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "score": {
+                "type": "float",
             }
         }
     }

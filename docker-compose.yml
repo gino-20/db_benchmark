@@ -1,0 +1,34 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_PASSWORD: ${PG_DBPASS}
+      POSTGRES_USER: ${PG_DBUSER}
+      POSTGRES_DB: ${PG_DBNAME}
+    ports:
+      - "${PG_DBPORT}:5432"
+    
+  elk:
+    image: elasticsearch:7.7.0
+    container_name: elastic
+    environment:
+      discovery.type: single-node
+    ports:
+      - "${ELK_DBPORT1}:9200"
+      - "${ELK_DBPORT2}:9300"
+
+  mongo:
+    image: mongo:4.2-bionic
+    container_name: mongo
+    ports:
+      - "${MONGO_DBPORT}:27017"
+
+  clickhouse:
+    image: bitnami/clickhouse:latest
+    container_name: clickhouse
+    environment:
+      CLICKHOUSE_ADMIN_PASSWORD: 'password'
+    ports:
+      - "${CLICKHOUSE_DBPORT}:8123"
