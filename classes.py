@@ -11,7 +11,15 @@ import numpy
 import clickhouse_connect
 from multiprocessing import Pool
 
-from config import pg_config, elk_url, elk_index, mongo_url, clickhouse_dsl, number_of_reads, number_of_threads
+from config import (
+    pg_config,
+    elk_url,
+    elk_index,
+    mongo_url,
+    clickhouse_dsl,
+    number_of_reads,
+    number_of_threads,
+)
 
 
 class Benchmark(ABC):
@@ -28,7 +36,8 @@ class Benchmark(ABC):
             func(self)
             end_time = time.perf_counter()
             total_time = end_time - start_time
-            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+            print(f"Measure of {func.__name__} Took {total_time:.4f} seconds")
+
         return timer_wrapper
 
     @abstractmethod
@@ -37,15 +46,15 @@ class Benchmark(ABC):
         db_read_mp = 0
         self.write_many()
         self.write_one()
-        print('Starting read tests...')
-        print('Single process multiple read test...')
+        print("Starting read tests...")
+        print("Single process multiple read test...")
         start_time = time.perf_counter()
         for _ in range(number_of_reads):
             self.read_one()
         end_time = time.perf_counter()
         db_read_sp = (end_time - start_time) / number_of_reads
         if mp:
-            print('Multiprocess multiple read test...')
+            print("Multiprocess multiple read test...")
             temp_dataset = sample(self.data, number_of_reads)
             id_list = [one_id.user_id for one_id in temp_dataset]
             start_time = time.perf_counter()
@@ -54,7 +63,10 @@ class Benchmark(ABC):
             end_time = time.perf_counter()
             db_read_mp = (end_time - start_time) / number_of_reads
         self.clean()
-        print(f'\nDatabase read results:\n\t Single process: {db_read_sp:.4f}\t Multi process: {db_read_mp:.4f}')
+        print(
+            f"\nDatabase read results:\n\t Single process: "
+            f"{db_read_sp:.4f}\t Multi process: {db_read_mp:.4f}"
+        )
 
     @abstractmethod
     def write_one(self):
@@ -76,16 +88,20 @@ class Benchmark(ABC):
 class PG_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
-        print('Testing Postgres')
+        print("Testing Postgres")
         self.PAGE_SIZE = 5000
         psycopg2.extras.register_uuid()
-        with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            create_table = "create table IF NOT EXISTS test (" \
-                           "user_id uuid, " \
-                           "likes uuid[]," \
-                           "dislikes uuid[]," \
-                           "bookmarks uuid[]," \
-                           "score float(1));"
+        with contextlib.closing(
+            psycopg2.connect(**pg_config)
+        ) as conn, conn.cursor() as cur:
+            create_table = (
+                "create table IF NOT EXISTS test ("
+                "user_id uuid, "
+                "likes uuid[],"
+                "dislikes uuid[],"
+                "bookmarks uuid[],"
+                "score float(1));"
+            )
             cur.execute(create_table)
             conn.commit()
             self.test_iterator()
@@ -96,7 +112,7 @@ class PG_benchmark(Benchmark):
             func(self)
             end_time = time.perf_counter()
             total_time = end_time - start_time
-            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+            print(f"Measure of {func.__name__} Took {total_time:.4f} seconds")
 
         return timer_wrapper
 
@@ -105,46 +121,66 @@ class PG_benchmark(Benchmark):
 
     @_timer
     def write_one(self):
-        with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            query = 'INSERT INTO test (user_id, likes, dislikes, bookmarks, score) VALUES (%s, %s, %s, %s, %s)'
-            cur.execute(query, (self.item.user_id,
-                                self.item.likes,
-                                self.item.dislikes,
-                                self.item.bookmarks,
-                                self.item.score))
+        with contextlib.closing(
+            psycopg2.connect(**pg_config)
+        ) as conn, conn.cursor() as cur:
+            query = "INSERT INTO test " \
+                    "(user_id, likes, dislikes, bookmarks, score) " \
+                    "VALUES (%s, %s, %s, %s, %s)"
+            cur.execute(
+                query,
+                (
+                    self.item.user_id,
+                    self.item.likes,
+                    self.item.dislikes,
+                    self.item.bookmarks,
+                    self.item.score,
+                ),
+            )
             conn.commit()
 
     @_timer
     def write_many(self):
-        print('Populating DB with the whole dataset...')
-        with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            data_set = [(item.user_id, item.likes, item.dislikes, item.bookmarks, item.score) for item in self.data]
-            query = 'INSERT INTO test (user_id, likes, dislikes, bookmarks, score) VALUES (%s, %s, %s, %s, %s)'
+        print("Populating DB with the whole dataset...")
+        with contextlib.closing(
+            psycopg2.connect(**pg_config)
+        ) as conn, conn.cursor() as cur:
+            data_set = [
+                (item.user_id, item.likes, item.dislikes,
+                 item.bookmarks, item.score)
+                for item in self.data
+            ]
+            query = "INSERT INTO test " \
+                    "(user_id, likes, dislikes, bookmarks, score) " \
+                    "VALUES (%s, %s, %s, %s, %s)"
             execute_batch(cur, query, data_set, page_size=self.PAGE_SIZE)
             conn.commit()
 
     def read_one(self, search_id=0):
         if search_id == 0:
             search_id = self.item.user_id
-        with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
+        with contextlib.closing(
+            psycopg2.connect(**pg_config)
+        ) as conn, conn.cursor() as cur:
             query = f"select * from test where user_id = '{search_id}'"
             cur.execute(query)
             cur.fetchone()
 
-
     def clean(self):
-        with contextlib.closing(psycopg2.connect(**pg_config)) as conn, conn.cursor() as cur:
-            query = 'drop table test;'
+        with contextlib.closing(
+            psycopg2.connect(**pg_config)
+        ) as conn, conn.cursor() as cur:
+            query = "drop table test;"
             cur.execute(query)
 
 
 class ELK_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
-        print('Testing ELK')
+        print("Testing ELK")
         es = elasticsearch.Elasticsearch(elk_url)
-        if not es.indices.exists('test'):
-            es.indices.create('test', elk_index)
+        if not es.indices.exists("test"):
+            es.indices.create("test", elk_index)
         self.test_iterator()
 
     def test_iterator(self):
@@ -156,7 +192,7 @@ class ELK_benchmark(Benchmark):
             func(self)
             end_time = time.perf_counter()
             total_time = end_time - start_time
-            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+            print(f"Measure of {func.__name__} Took {total_time:.4f} seconds")
 
         return timer_wrapper
 
@@ -164,18 +200,20 @@ class ELK_benchmark(Benchmark):
         """Prepare ELK data chunks to write to the Elastic DB"""
         for data in data_set:
             yield {
-                '_index': 'test',
-                '_id': data.user_id,
-                'user_id': data.user_id,
-                'likes': data.likes,
-                'dislikes': data.dislikes,
-                'score': data.score
+                "_index": "test",
+                "_id": data.user_id,
+                "user_id": data.user_id,
+                "likes": data.likes,
+                "dislikes": data.dislikes,
+                "score": data.score,
             }
 
     @_timer
     def write_many(self):
-        print('Populating DB with the whole dataset...')
-        es = elasticsearch.Elasticsearch(elk_url)
+        print("Populating DB with the whole dataset...")
+        es = elasticsearch.Elasticsearch(
+            elk_url, timeout=30, max_retries=10, retry_on_timeout=True
+        )
         bulk(es, self.elk_iterator(self.data), ignore=[400, 404])
 
     @_timer
@@ -183,29 +221,29 @@ class ELK_benchmark(Benchmark):
         es = elasticsearch.Elasticsearch(elk_url)
         data = self.item
         document = {
-                'user_id': data.user_id,
-                'likes': data.likes,
-                'dislikes': data.dislikes,
-                'bookmarks': data.bookmarks,
-                'score': data.score
-            }
-        es.index(index='test', id=data.user_id, body=document)
+            "user_id": data.user_id,
+            "likes": data.likes,
+            "dislikes": data.dislikes,
+            "bookmarks": data.bookmarks,
+            "score": data.score,
+        }
+        es.index(index="test", id=data.user_id, body=document)
 
     def read_one(self, search_id=0):
         if search_id == 0:
             search_id = self.item.user_id
         es = elasticsearch.Elasticsearch(elk_url)
-        es.get(index='test', id=search_id)
+        es.get(index="test", id=search_id)
 
     def clean(self):
         es = elasticsearch.Elasticsearch(elk_url)
-        es.indices.delete(index='test', ignore=[400, 404])
+        es.indices.delete(index="test", ignore=[400, 404])
 
 
 class Mongo_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
-        print('Testing Mongo')
+        print("Testing Mongo")
         self.test_iterator()
 
     def test_iterator(self):
@@ -217,13 +255,13 @@ class Mongo_benchmark(Benchmark):
             func(self)
             end_time = time.perf_counter()
             total_time = end_time - start_time
-            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+            print(f"Measure of {func.__name__} Took {total_time:.4f} seconds")
 
         return timer_wrapper
 
     @_timer
     def write_one(self):
-        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation="standard")
         mng_db = mng["test"]
         mng_col = mng_db["test"]
         mng_col.insert_one(dict(self.item))
@@ -231,8 +269,8 @@ class Mongo_benchmark(Benchmark):
     @_timer
     def write_many(self):
         data = [dict(item) for item in self.data]
-        print('Populating DB with the whole dataset...')
-        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        print("Populating DB with the whole dataset...")
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation="standard")
         mng_db = mng["test"]
         mng_col = mng_db["test"]
         mng_col.insert_many(data)
@@ -240,13 +278,13 @@ class Mongo_benchmark(Benchmark):
     def read_one(self, search_id=0):
         if search_id == 0:
             search_id = self.item.user_id
-        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation="standard")
         mng_db = mng["test"]
         mng_col = mng_db["test"]
-        mng_col.find({'id': search_id})
+        mng_col.find({"id": search_id})
 
     def clean(self):
-        mng = pymongo.MongoClient(mongo_url, uuidRepresentation='standard')
+        mng = pymongo.MongoClient(mongo_url, uuidRepresentation="standard")
         mng_db = mng["test"]
         mng_col = mng_db["test"]
         mng_col.drop()
@@ -255,7 +293,7 @@ class Mongo_benchmark(Benchmark):
 class Clickhouse_benchmark(Benchmark):
     def __init__(self, data):
         super().__init__(data)
-        print('Testing Clickhouse')
+        print("Testing Clickhouse")
         self.test_iterator()
 
     def test_iterator(self):
@@ -267,7 +305,7 @@ class Clickhouse_benchmark(Benchmark):
             func(self)
             end_time = time.perf_counter()
             total_time = end_time - start_time
-            print(f'Measure of {func.__name__} Took {total_time:.4f} seconds')
+            print(f"Measure of {func.__name__} Took {total_time:.4f} seconds")
 
         return timer_wrapper
 
@@ -275,25 +313,48 @@ class Clickhouse_benchmark(Benchmark):
     def write_one(self):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
         data = [list(dict(self.item).values())]
-        cl.command('CREATE TABLE IF NOT EXISTS test '
-                   '(user_id UUID, likes Array(UUID), dislikes Array(UUID), bookmarks Array(UUID), score Float32) '
-                   'ENGINE MergeTree ORDER BY user_id')
-        cl.insert('test', data, column_names=['user_id', 'likes', 'dislikes', 'bookmarks', 'score'])
+        cl.command(
+            "CREATE TABLE IF NOT EXISTS test "
+            "(user_id UUID, likes Array(UUID), "
+            "dislikes Array(UUID), bookmarks Array(UUID), "
+            "score Float32) "
+            "ENGINE MergeTree ORDER BY user_id"
+        )
+        cl.insert(
+            "test",
+            data,
+            column_names=[
+                "user_id", "likes", "dislikes", "bookmarks", "score"
+            ],
+        )
 
     @_timer
     def write_many(self):
-        print('Populating DB with the whole dataset...')
+        print("Populating DB with the whole dataset...")
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
-        cl.command('CREATE TABLE IF NOT EXISTS test '
-                   '(user_id UUID, likes Array(UUID), dislikes Array(UUID), bookmarks Array(UUID), score Float32) '
-                   'ENGINE MergeTree ORDER BY user_id')
-        data_list = [[item.user_id, item.likes, item.dislikes, item.bookmarks, item.score] for item in self.data]
-        cl.insert('test', data_list, column_names=['user_id', 'likes', 'dislikes', 'bookmarks', 'score'])
+        cl.command(
+            "CREATE TABLE IF NOT EXISTS test "
+            "(user_id UUID, likes Array(UUID), "
+            "dislikes Array(UUID), bookmarks Array(UUID), "
+            "score Float32) "
+            "ENGINE MergeTree ORDER BY user_id"
+        )
+        data_list = [
+            [item.user_id, item.likes, item.dislikes,
+             item.bookmarks, item.score]
+            for item in self.data
+        ]
+        cl.insert(
+            "test",
+            data_list,
+            column_names=["user_id", "likes", "dislikes",
+                          "bookmarks", "score"],
+        )
 
     def read_one(self, search_id=0):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
-        cl.query(f'SELECT COLUMNS("user_id") FROM test')
+        cl.query('SELECT COLUMNS("user_id") FROM test')
 
     def clean(self):
         cl = clickhouse_connect.get_client(**clickhouse_dsl)
-        cl.command('DROP TABLE test')
+        cl.command("DROP TABLE test")
