@@ -5,8 +5,9 @@ from faker import Faker
 from tqdm import tqdm
 from random import randint, random
 
-from config import data_range
 from classes import PG_benchmark, ELK_benchmark, Mongo_benchmark, Clickhouse_benchmark
+
+from config import numer_of_subfields, number_of_reads, number_of_threads
 
 dsn = {
     'dbname': 'test',
@@ -32,9 +33,9 @@ def data_generator() -> list:
     # The data structure is made with the idea, that everything is based on the id of user
     data_list = [
         Test(user_id=uuid.uuid4(),
-             likes=[uuid.uuid4() for _ in range(randint(0, 100))],
-             dislikes=[uuid.uuid4() for _ in range(randint(0, 100))],
-             bookmarks=[uuid.uuid4() for _ in range(randint(0, 100))],
+             likes=[uuid.uuid4() for _ in range(randint(0, numer_of_subfields))],
+             dislikes=[uuid.uuid4() for _ in range(randint(0, numer_of_subfields))],
+             bookmarks=[uuid.uuid4() for _ in range(randint(0, numer_of_subfields))],
              score=round(random()*10, 1))
         for _ in tqdm(range(data_range))
     ]
@@ -42,12 +43,21 @@ def data_generator() -> list:
 
 
 if __name__ == '__main__':
-    print(f'Benchmarking DBs with the dataset of {data_range} items\n')
+    try:
+        data_range = int(input('Enter desired dataset size (default is 100): '))
+    except ValueError:
+        print('Only integer value supported, using default')
+        data_range = 100
+    print(f'\nBenchmarking DBs with the dataset of '
+          f'{data_range} items, '
+          f'{numer_of_subfields} subfields, '
+          f'{number_of_threads} threads\n')
     ds = data_generator()
-#    PG_benchmark(ds)
 
-#    ELK_benchmark(ds)
+    PG_benchmark(ds)
 
-#    Mongo_benchmark(ds)
+    ELK_benchmark(ds)
+
+    Mongo_benchmark(ds)
 
     Clickhouse_benchmark(ds)

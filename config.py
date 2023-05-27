@@ -3,7 +3,9 @@ import os
 
 load_dotenv()
 
-data_range = 1000
+number_of_reads = 10
+numer_of_subfields = 100
+number_of_threads = 4
 
 pg_config = {
     'dbname': os.environ.get("PG_DBNAME"),
