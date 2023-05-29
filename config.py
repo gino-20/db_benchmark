@@ -6,7 +6,7 @@ load_dotenv()
 
 number_of_reads = 10
 numer_of_subfields = 100
-number_of_threads = 4
+number_of_threads = 2
 
 pg_config = {
     'dbname': os.environ.get("PG_DBNAME"),
